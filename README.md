@@ -18,7 +18,7 @@ Offsets:
 
 EdenXI `0061D140`
 
-HorizonXI `62b1c8`
+HorizonXI `0x62d8f0`
 
 The KParser binaries are not compatible between differnt private servers. 
 Retail is not supported, but make an issue if you want to contribute.
