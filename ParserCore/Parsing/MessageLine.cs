@@ -46,10 +46,13 @@ namespace WaywardGamers.KParser
         #region Message parsing regexes (static data)
 
         // Regex describing general chat line format
+        // Extra xxxSeq/unk3 header fields are unused by Parser. They appear in some
+        // RAM/log captures; TestParser chatlines omit them. Keep them optional so
+        // both layouts extract the same msgCode/eventSeq/msgCat/remainder.
         static Regex msgLineBreakdown = new Regex(
             @"^(?<msgCode>[0-9a-f]{2}),(?<xCode1>[0-9a-f]{2}),(?<xCode2>[0-9a-f]{2}),(?<msgColor>[0-9a-f]{8})," +
             @"(?<eventSeq>[0-9a-f]{8}),(?<uniqSeq>[0-9a-f]{8}),(?<strLen>[0-9a-f]{4}),(?<unk1>[0-9a-f]{2})," +
-            @"(?<unk2>[0-9a-f]{2}),(?<msgCat>[0-9a-f]{2}),(?<xxxSeq1>[0-9a-f]{2}),(?<xxxSeq2>[0-9a-f]{8}),(?<xxxSeq3>[0-9a-f]{8}),(?<xxxSeq4>[0-9a-f]{8}),(?<xxxSeq5>[0-9a-f]{8}),(?<xxxSeq6>[0-9a-f]{8}),(?<xxxSeq7>[0-9a-f]{8}),(?<xxxSeq8>[0-9a-f]{8}),(?<xxxSeq9>[0-9a-f]{8}),(?<xxxSeq10>[0-9a-f]{8})(?<unk3>[0-9a-f]{2})," +
+            @"(?<unk2>[0-9a-f]{2}),(?<msgCat>[0-9a-f]{2}),(?<xxxSeq1>[0-9a-f]{2}),((?<xxxSeq2>[0-9a-f]{8}),(?<xxxSeq3>[0-9a-f]{8}),(?<xxxSeq4>[0-9a-f]{8}),(?<xxxSeq5>[0-9a-f]{8}),(?<xxxSeq6>[0-9a-f]{8}),(?<xxxSeq7>[0-9a-f]{8}),(?<xxxSeq8>[0-9a-f]{8}),(?<xxxSeq9>[0-9a-f]{8}),(?<xxxSeq10>[0-9a-f]{8})(?<unk3>[0-9a-f]{2}),)?" +
             @"((\x1e\x01)+(\x81\x40)?(\x1e\x01)*)?" +
             //@"(?<tsPlugin>((\x1e(\x3f|\xfa|\xfc)\[)|(\x1e.)|(\[))(?<time>\d{2}:\d{2}:\d{2})\s?(?<ampm>\w{2})?\] (\x1e\x01)?)?" +
             //@"(?<tsPlugin>((\x1e.)?\[)(?<time>\d{2}:\d{2}:\d{2})\s*(?<ampm>\w{2})?\]\s*\x1e\x01)?" +
@@ -59,7 +62,7 @@ namespace WaywardGamers.KParser
         static Regex msgLineBreakdownOfFilteredChat = new Regex(
             @"^(?<msgCode>[0-9a-f]{2}),(?<xCode1>[0-9a-f]{2}),(?<xCode2>[0-9a-f]{2}),(?<msgColor>[0-9a-f]{8})," +
             @"(?<eventSeq>[0-9a-f]{8}),(?<uniqSeq>[0-9a-f]{8}),(?<strLen>[0-9a-f]{4}),(?<unk1>[0-9a-f]{2})," +
-            @"(?<unk2>[0-9a-f]{2}),(?<msgCat>[0-9a-f]{2}),(?<xxxSeq1>[0-9a-f]{2}),(?<xxxSeq2>[0-9a-f]{8}),(?<xxxSeq3>[0-9a-f]{8}),(?<xxxSeq4>[0-9a-f]{8}),(?<xxxSeq5>[0-9a-f]{8}),(?<xxxSeq6>[0-9a-f]{8}),(?<xxxSeq7>[0-9a-f]{8}),(?<xxxSeq8>[0-9a-f]{8}),(?<xxxSeq9>[0-9a-f]{8}),(?<xxxSeq10>[0-9a-f]{8}),(?<unk3>[0-9a-f]{2})," +
+            @"(?<unk2>[0-9a-f]{2}),(?<msgCat>[0-9a-f]{2}),(?<xxxSeq1>[0-9a-f]{2}),((?<xxxSeq2>[0-9a-f]{8}),(?<xxxSeq3>[0-9a-f]{8}),(?<xxxSeq4>[0-9a-f]{8}),(?<xxxSeq5>[0-9a-f]{8}),(?<xxxSeq6>[0-9a-f]{8}),(?<xxxSeq7>[0-9a-f]{8}),(?<xxxSeq8>[0-9a-f]{8}),(?<xxxSeq9>[0-9a-f]{8}),(?<xxxSeq10>[0-9a-f]{8}),(?<unk3>[0-9a-f]{2}),)?" +
             //@"(?<tsPlugin>\[?(?<time>\d{1,2}:\d{2}:\d{2})\s*(?<ampm>\w{2})?\]\s*)?" +
             @"(?<tsPlugin>(\[)?(?<time>\d{1,2}:\d{2}(:\d{2})?)\s*(?<ampm>\w{2})?(\])?\s*)?" +
             @"(?<remainder>.+)$");
