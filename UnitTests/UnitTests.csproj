@@ -76,6 +76,7 @@
     <Compile Include="Core\TestMessage.cs" />
     <Compile Include="Core\TestMessageLine.cs" />
     <Compile Include="Core\TestParser.cs" />
+    <Compile Include="Core\TestParseSnapshot.cs" />
     <Compile Include="Core\Parsing\TextMsgManager.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
