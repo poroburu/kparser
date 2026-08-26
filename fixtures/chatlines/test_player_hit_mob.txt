@@ -1,0 +1,2 @@
+# TestParser TestPlayerHitMob — one ChatLine per line. Blank and # lines are skipped.
+14,7a,98,80c08080,0000268b,00002c8b,003e,00,01,02,00,Motenten hits the Greater Colibri for 128 points of damage.1
