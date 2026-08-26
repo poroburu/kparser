@@ -267,6 +267,19 @@ namespace WaywardGamers.KParser.Parsing
 
         #endregion
 
+        #region Snapshot
+        /// <summary>
+        /// Copy of the entity name/type map. Does not mutate parser state.
+        /// </summary>
+        internal IList<KeyValuePair<string, EntityType>> SnapshotEntities()
+        {
+            lock (entityCollection)
+            {
+                return new List<KeyValuePair<string, EntityType>>(entityCollection);
+            }
+        }
+        #endregion
+
         #region Debugging output
         internal void DumpData(StreamWriter sw)
         {

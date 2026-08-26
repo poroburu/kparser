@@ -171,6 +171,15 @@ namespace WaywardGamers.KParser.Database
         }
 
         /// <summary>
+        /// Close remaining open battles without resetting tracking tables.
+        /// Used by the opt-in snapshot path; does not persist to disk.
+        /// </summary>
+        internal void CloseOutBattles()
+        {
+            UpdateActiveBattleList(true);
+        }
+
+        /// <summary>
         /// Update the provided database with the info supplied in the
         /// player info list.
         /// </summary>

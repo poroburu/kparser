@@ -63,6 +63,20 @@ namespace WaywardGamers.KParser.Parsing
         #region Properties
         internal uint LastMessageEventNumber { get; private set; }
 
+        /// <summary>
+        /// Number of messages waiting in the current collection. Read-only.
+        /// </summary>
+        internal int CollectedMessageCount
+        {
+            get
+            {
+                lock (currentMessageCollection)
+                {
+                    return currentMessageCollection.Count;
+                }
+            }
+        }
+
         internal List<PlayerInfo> PlayerInfoList
         {
             get

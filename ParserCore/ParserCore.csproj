@@ -184,6 +184,9 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>KPDatabaseReadOnly.xsd</DependentUpon>
     </Compile>
+    <Compile Include="Parsing\ParseSnapshot.cs" />
+    <Compile Include="Parsing\ParseSnapshotDtos.cs" />
+    <Compile Include="Parsing\ParseSnapshotJson.cs" />
     <Compile Include="Parsing\ChatLine.cs" />
     <Compile Include="Parsing\MessageDetail\LootDetails.cs" />
     <Compile Include="Parsing\MessageDetail\ActionDetails.cs" />
