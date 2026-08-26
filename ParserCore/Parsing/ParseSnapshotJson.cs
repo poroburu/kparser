@@ -11,6 +11,16 @@ namespace WaywardGamers.KParser
     /// </summary>
     internal static class ParseSnapshotJson
     {
+        public static string SerializeParityChat(ParseSnapshotResult result)
+        {
+            JsonWriter w = new JsonWriter();
+            List<ParseSnapshotParityChat> chat = null;
+            if (result != null && result.Parity != null)
+                chat = result.Parity.Chat;
+            WriteParityChatArray(w, chat);
+            return w.ToString();
+        }
+
         public static string Serialize(ParseSnapshotResult result)
         {
             if (result == null)
@@ -383,7 +393,29 @@ namespace WaywardGamers.KParser
                 }
             }
             w.WriteEndArray();
+            w.WritePropertyName("chat");
+            WriteParityChatArray(w, parity != null ? parity.Chat : null);
             w.WriteEndObject();
+        }
+
+        static void WriteParityChatArray(JsonWriter w, List<ParseSnapshotParityChat> list)
+        {
+            w.WriteStartArray();
+            if (list != null)
+            {
+                foreach (ParseSnapshotParityChat c in list)
+                {
+                    w.WriteStartObject();
+                    w.WritePropertyName("speaker");
+                    w.WriteString(c.Speaker);
+                    w.WritePropertyName("mode");
+                    w.WriteString(c.Mode);
+                    w.WritePropertyName("message");
+                    w.WriteString(c.Message);
+                    w.WriteEndObject();
+                }
+            }
+            w.WriteEndArray();
         }
 
         static void WriteStringArray(JsonWriter w, List<string> list)

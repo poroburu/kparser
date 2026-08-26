@@ -9,6 +9,12 @@ namespace WaywardGamers.KParser.Cli
     {
         static int Main(string[] args)
         {
+            if (args == null || args.Length == 0)
+            {
+                PrintUsage();
+                return 0;
+            }
+
             if (args.Length < 2 ||
                 !string.Equals(args[0], "snapshot", StringComparison.OrdinalIgnoreCase))
             {
@@ -18,6 +24,7 @@ namespace WaywardGamers.KParser.Cli
 
             string path = args[1];
             bool asJson = false;
+            bool parityChat = false;
             string output = null;
 
             for (int i = 2; i < args.Length; i++)
@@ -27,11 +34,16 @@ namespace WaywardGamers.KParser.Cli
                 {
                     asJson = true;
                 }
-                else if (string.Equals(arg, "-o", StringComparison.OrdinalIgnoreCase))
+                else if (string.Equals(arg, "--parity-chat", StringComparison.OrdinalIgnoreCase))
+                {
+                    parityChat = true;
+                }
+                else if (string.Equals(arg, "-o", StringComparison.OrdinalIgnoreCase) ||
+                         string.Equals(arg, "--output", StringComparison.OrdinalIgnoreCase))
                 {
                     if (i + 1 >= args.Length)
                     {
-                        Console.Error.WriteLine("-o requires a path");
+                        Console.Error.WriteLine("-o/--output requires a path");
                         return 1;
                     }
                     i++;
@@ -52,12 +64,14 @@ namespace WaywardGamers.KParser.Cli
             }
 
             ParseSnapshotResult result = ParseSnapshot.FromChatLineFile(path);
-            string json = ParseSnapshot.ToJson(result);
+            string json = parityChat
+                ? ParseSnapshot.ToParityChatJson(result)
+                : ParseSnapshot.ToJson(result);
 
             if (output != null)
                 File.WriteAllText(output, json, new UTF8Encoding(false));
 
-            if (asJson)
+            if (parityChat || asJson)
                 Console.WriteLine(json);
             else
                 Console.Write(ParseSnapshot.FormatSummary(result));
@@ -68,7 +82,7 @@ namespace WaywardGamers.KParser.Cli
         static void PrintUsage()
         {
             Console.WriteLine("Usage:");
-            Console.WriteLine("  kparser.cli snapshot <chatlines.txt> [--json] [-o out.json]");
+            Console.WriteLine("  kparser.cli snapshot <chatlines.txt> [--json] [--parity-chat] [-o|--output out.json]");
         }
     }
 }

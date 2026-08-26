@@ -1,0 +1,2 @@
+# Matches kparser2 fixtures/sessions/chat_yell.ndjson (unique eventSeq).
+0b,00,00,80808080,00000021,00000021,0020,00,01,01,00,Alice[Windurst]: Hello from yell1

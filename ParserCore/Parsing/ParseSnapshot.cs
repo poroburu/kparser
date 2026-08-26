@@ -66,7 +66,8 @@ namespace WaywardGamers.KParser
                         EntityManager.Instance.AddEntitiesFromMessage(msg);
                         MsgManager.Instance.AddMessageToMessageCollection(msg);
                         entry.AddMessageToDatabase(ds, msg);
-                        parsed.Add(msg);
+                        if (!parsed.Contains(msg))
+                            parsed.Add(msg);
                     }
                     catch (Exception ex)
                     {
@@ -121,6 +122,14 @@ namespace WaywardGamers.KParser
             return ParseSnapshotJson.Serialize(result);
         }
 
+        /// <summary>
+        /// JSON array of <c>parity.chat</c> rows only.
+        /// </summary>
+        public static string ToParityChatJson(ParseSnapshotResult result)
+        {
+            return ParseSnapshotJson.SerializeParityChat(result);
+        }
+
         public static string FormatSummary(ParseSnapshotResult result)
         {
             if (result == null)
@@ -131,6 +140,19 @@ namespace WaywardGamers.KParser
             sb.AppendFormat(CultureInfo.InvariantCulture,
                 "messages={0} parseSuccessful={1} combatants={2} battles={3} interactions={4} chat={5} loot={6}\n",
                 c.Messages, c.ParseSuccessful, c.Combatants, c.Battles, c.Interactions, c.Chat, c.Loot);
+
+            if (result.Parity != null && result.Parity.Chat != null && result.Parity.Chat.Count > 0)
+            {
+                sb.AppendLine("parity chat:");
+                int shown = 0;
+                foreach (ParseSnapshotParityChat p in result.Parity.Chat)
+                {
+                    if (shown >= 12)
+                        break;
+                    sb.AppendFormat("  [{0}] {1}: {2}\n", p.Mode, p.Speaker, p.Message);
+                    shown++;
+                }
+            }
 
             if (result.Combatants != null && result.Combatants.Count > 0)
             {
@@ -174,6 +196,7 @@ namespace WaywardGamers.KParser
         {
             List<ParseSnapshotMessage> messages = new List<ParseSnapshotMessage>();
             List<ParseSnapshotParityInteraction> parity = new List<ParseSnapshotParityInteraction>();
+            List<ParseSnapshotParityChat> parityChat = new List<ParseSnapshotParityChat>();
             int successful = 0;
 
             foreach (Message msg in parsed)
@@ -184,6 +207,7 @@ namespace WaywardGamers.KParser
                 ParseSnapshotMessage dump = MapMessage(msg);
                 messages.Add(dump);
                 AddParityFromMessage(msg, parity);
+                AddParityChatFromMessage(msg, parityChat);
             }
 
             List<ParseSnapshotEntity> entities = new List<ParseSnapshotEntity>();
@@ -220,6 +244,7 @@ namespace WaywardGamers.KParser
 
             ParseSnapshotParity parityWrap = new ParseSnapshotParity();
             parityWrap.Interactions = parity;
+            parityWrap.Chat = parityChat;
 
             ParseSnapshotResult result = new ParseSnapshotResult();
             result.Meta = meta;
@@ -327,6 +352,54 @@ namespace WaywardGamers.KParser
             }
 
             return dump;
+        }
+
+        static void AddParityChatFromMessage(Message msg, List<ParseSnapshotParityChat> chat)
+        {
+            if (msg == null || chat == null)
+                return;
+
+            if (msg.MessageCategory == MessageCategoryType.Chat && msg.ChatDetails != null)
+            {
+                ParseSnapshotParityChat row = new ParseSnapshotParityChat();
+                string speaker = msg.ChatDetails.ChatSpeakerName ?? "";
+                row.Speaker = speaker;
+                row.Mode = msg.ChatDetails.ChatMessageType.ToString();
+                string full = msg.ChatDetails.FullChatText;
+                if (string.IsNullOrEmpty(full))
+                    full = msg.CompleteMessageText;
+                row.Message = ChatBody(speaker, full);
+                chat.Add(row);
+                return;
+            }
+
+            if (msg.MessageCategory == MessageCategoryType.System)
+            {
+                ParseSnapshotParityChat row = new ParseSnapshotParityChat();
+                row.Speaker = "System";
+                row.Mode = "System";
+                row.Message = msg.CompleteMessageText ?? "";
+                chat.Add(row);
+            }
+        }
+
+        /// <summary>
+        /// Strip <c>Name : body</c> / <c>Name[Zone]: body</c> prefixes for kparser2 diffs.
+        /// </summary>
+        internal static string ChatBody(string speaker, string full)
+        {
+            if (string.IsNullOrEmpty(full))
+                return "";
+            if (string.IsNullOrEmpty(speaker))
+                return full;
+            if (full.StartsWith(speaker, StringComparison.Ordinal))
+            {
+                int colon = full.IndexOf(':');
+                if (colon >= 0)
+                    return full.Substring(colon + 1).TrimStart();
+            }
+
+            return full;
         }
 
         static void AddParityFromMessage(Message msg, List<ParseSnapshotParityInteraction> parity)
@@ -529,9 +602,12 @@ namespace WaywardGamers.KParser
 
         static string FormatTimestamp(DateTime timestamp)
         {
-            DateTime utc = timestamp.Kind == DateTimeKind.Utc
-                ? timestamp
-                : timestamp.ToUniversalTime();
+            DateTime utc;
+            if (timestamp.Kind == DateTimeKind.Local)
+                utc = timestamp.ToUniversalTime();
+            else
+                utc = DateTime.SpecifyKind(timestamp, DateTimeKind.Utc);
+
             return utc.ToString("yyyy-MM-ddTHH:mm:ss.fffZ", CultureInfo.InvariantCulture);
         }
     }

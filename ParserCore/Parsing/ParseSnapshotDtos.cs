@@ -151,6 +151,7 @@ namespace WaywardGamers.KParser
     public class ParseSnapshotParity
     {
         public List<ParseSnapshotParityInteraction> Interactions { get; set; }
+        public List<ParseSnapshotParityChat> Chat { get; set; }
     }
 
     public class ParseSnapshotParityInteraction
@@ -161,5 +162,16 @@ namespace WaywardGamers.KParser
         public string ActionType { get; set; }
         public int Amount { get; set; }
         public string Success { get; set; }
+    }
+
+    /// <summary>
+    /// Name/mode/body projection for kparser2 chat diffs.
+    /// <see cref="Message"/> is the body only (no speaker prefix).
+    /// </summary>
+    public class ParseSnapshotParityChat
+    {
+        public string Speaker { get; set; }
+        public string Mode { get; set; }
+        public string Message { get; set; }
     }
 }

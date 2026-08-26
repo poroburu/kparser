@@ -14,7 +14,16 @@ powershell -File C:\Users\porob\git\kdev\kparser\scripts\snapshot.ps1 snapshot `
   C:\Users\porob\git\kdev\kparser\fixtures\chatlines\test_player_hit_mob.txt
 ```
 
-Human-readable default prints counts, combatants, and `parity.interactions`. `--json` prints the full document (schema: [docs/snapshot-schema.md](docs/snapshot-schema.md)). `-o out.json` writes UTF-8 JSON without changing parse behavior.
+Human-readable default prints counts, `parity.chat`, combatants, and `parity.interactions`. `--json` prints the full document (schema: [docs/snapshot-schema.md](docs/snapshot-schema.md)). `--parity-chat` prints only the comparable `{speaker,mode,message}` array. `-o` / `--output out.json` writes UTF-8 JSON (the wrapper passes `-o` through; do not use `param()` remaining-args).
+
+Chat-only dual dump (Yell pair; `chat_modes.txt` covers Yell + Say + System):
+
+```powershell
+powershell -File C:\Users\porob\git\kdev\kparser\scripts\snapshot.ps1 snapshot `
+  C:\Users\porob\git\kdev\kparser\fixtures\chatlines\chat_yell.txt --parity-chat -o kparser-chat.json
+```
+
+Use unique `eventSeq` values per line. Reusing TestParser dummy `00000010` stitches messages together.
 
 Build without the wrapper:
 
@@ -39,6 +48,15 @@ Pending pet-death queue handling used by the live GUI is **not** applied (v1). T
 ## Compare with kparser2
 
 kparser IDs are DataSet autoincrement; kparser2 uses packet entity IDs. Diff `parity.interactions` by **name** against kparser2 `InteractionDto` (`actorName`, `targetName`, `interactionType`, `actionType` ≈ kparser2 category/harm, `amount`/`value`, `success`).
+
+Diff `parity.chat` by **speaker / mode / message** (body only) against kparser2 `--parity-chat` (incoming 0x17 only). System lines are projected even though kparser does not store them in `ChatMessages`.
+
+```powershell
+dotnet run --project C:\Users\porob\git\kdev\kparser2\kparser2.Cli\kparser2.Cli.fsproj -- analytics snapshot `
+  C:\Users\porob\git\kdev\kparser2\fixtures\sessions\chat_yell.ndjson --parity-chat -o k2-yell.json
+
+powershell -File C:\Users\porob\git\kdev\kparser2\scripts\compare-chat-parity.ps1 kparser-chat.json k2-yell.json
+```
 
 See [kparser2 AGENTS.md](../kparser2/AGENTS.md) for the dual-oracle loop.
 

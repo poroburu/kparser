@@ -39,6 +39,11 @@ kparser is **not** `AnalyticsSnapshotDto`. Combatant/battle IDs are in-memory au
       "actionType": "Melee",
       "amount": 128,
       "success": "hit"
+    }],
+    "chat": [{
+      "speaker": "Alice",
+      "mode": "Yell",
+      "message": "hello"
     }]
   },
   "errors": []
@@ -54,6 +59,7 @@ kparser is **not** `AnalyticsSnapshotDto`. Combatant/battle IDs are in-memory au
 | `messages` | Per-line `Parser.Parse` result (pre-database) |
 | `combatants` / `battles` / `interactions` / `chat` / `loot` | In-memory `DatabaseEntry` tables. The dummy `DefaultBattle` row is omitted |
 | `parity.interactions` | Name-keyed projection for kparser2 diffs |
+| `parity.chat` | Speaker/mode/**body** projection for kparser2 diffs. Includes `MessageCategoryType.System` (speaker `System`) even though those rows are not stored in `ChatMessages`. Native `chat[].message` stays the full chatline text. |
 | `errors` | Per-line parse exceptions; empty on a clean run |
 
 ## `parity.success`
@@ -63,6 +69,16 @@ Derived only from existing kparser fields, in order:
 1. Target `DefenseType`: Parry → `parry`, Shadow → `shadow-absorb`, Evade/Evasion → `miss`
 2. `FailedActionType.NoEffect` → `no-effect`
 3. Else `SuccessLevel`: Successful → `hit`, Unsuccessful/Failed → `miss`
+
+## `parity.chat`
+
+Compare with kparser2 `--parity-chat` (incoming packets only) by `speaker`, `mode`, and body `message`:
+
+- **mode**: `Yell` / `Say` / `Shout` / `Tell` / `Party` / `Linkshell` / `Emote` / `System` (kparser `Arena` / `Echo` kept if they appear)
+- **message**: body only (`Name : text` and `Name[Zone]: text` prefixes stripped)
+- Give each chatline a **unique `eventSeq`**. Reused dummy headers (`00000010`) stitch lines into one message.
+
+DataSet `DateTime` columns are `Unspecified`; snapshot timestamps treat that as UTC (same clock as `messages[].chat`).
 
 ## Input
 

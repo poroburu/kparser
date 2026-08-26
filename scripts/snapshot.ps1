@@ -1,8 +1,3 @@
-param(
-    [Parameter(ValueFromRemainingArguments = $true)]
-    [string[]]$CliArgs
-)
-
 $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
 
@@ -37,10 +32,10 @@ if (-not $exe) {
     throw "kparser.cli.exe not found after build."
 }
 
-if (-not $CliArgs -or $CliArgs.Count -eq 0) {
+if (-not $args -or $args.Count -eq 0) {
     & $exe
     exit $LASTEXITCODE
 }
 
-& $exe @CliArgs
+& $exe @args
 exit $LASTEXITCODE
