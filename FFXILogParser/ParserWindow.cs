@@ -51,6 +51,14 @@ namespace WaywardGamers.KParser
         #region Member Variables
         string applicationDirectory;
         string defaultSaveDirectory;
+        const uint HorizonMemoryOffset = 0x0062D8F0;
+        UiControlServer uiControlServer;
+        int uiGeneration;
+        DateTime uiLastResetUtc;
+        string uiLastError = String.Empty;
+        string uiBoundaryMode = "none";
+        string uiBoundaryQuality = "unavailable";
+        string uiBoundaryReason = "no reset boundary";
 
         Properties.WindowSettings windowSettings = new WaywardGamers.KParser.Properties.WindowSettings();
         Properties.Settings appSettings = new WaywardGamers.KParser.Properties.Settings();
@@ -112,6 +120,7 @@ namespace WaywardGamers.KParser
 
             LoadWatchMonitors();
 
+            StartUiControlServer();
             LoadCommandLine();
         }
 
@@ -280,15 +289,216 @@ namespace WaywardGamers.KParser
 
         private void LoadCommandLine()
         {
+            string[] cla = Environment.GetCommandLineArgs();
+
+            if (cla.Skip(1).Any(argument =>
+                string.Equals(argument, "--parity-ui", StringComparison.OrdinalIgnoreCase)))
+            {
+                StartParityUi();
+                return;
+            }
+
             // Handle any command line arguments, to allow us to open files
             // directed at us.
-            string[] cla = Environment.GetCommandLineArgs();
             if (cla.Length > 1)
                 OpenFile(cla[1]);
         }
 
+        private void StartParityUi()
+        {
+            // The parity UI is an explicit opt-in startup mode. It keeps the
+            // normal kparser startup behavior unchanged while making the
+            // Horizon live comparison surface immediately useful.
+            ActivateParityTabs();
+            if (StartParsing(string.Empty, HorizonMemoryOffset, false))
+            {
+                uiGeneration++;
+                uiLastResetUtc = DateTime.UtcNow;
+                uiLastError = String.Empty;
+            }
+        }
+
+        private void StartUiControlServer()
+        {
+            try
+            {
+                uiControlServer = new UiControlServer(
+                    "kparser",
+                    GetUiControlDescriptorPath(),
+                    GetUiControlStatus,
+                    ResetUiSession);
+                uiControlServer.Start();
+            }
+            catch (Exception ex)
+            {
+                uiLastError = ex.Message;
+                Logger.Instance.Log(ex, "UI control server");
+            }
+        }
+
+        private string ResetUiSession(
+            string resetId,
+            string sessionUuid,
+            string afterMessageId,
+            string boundaryMode,
+            string boundaryQuality,
+            string boundaryReason)
+        {
+            if (InvokeRequired)
+            {
+                return (string)Invoke(
+                    new UiResetHandler(ResetUiSession),
+                    resetId,
+                    sessionUuid,
+                    afterMessageId,
+                    boundaryMode,
+                    boundaryQuality,
+                    boundaryReason);
+            }
+
+            if (boundaryMode != "exact" && boundaryMode != "degraded")
+            {
+                uiLastError = "boundary_mode must be exact or degraded";
+                return GetUiControlStatus(
+                    resetId,
+                    false,
+                    sessionUuid,
+                    afterMessageId,
+                    boundaryMode,
+                    boundaryQuality,
+                    boundaryReason);
+            }
+
+            if (boundaryMode == "exact" &&
+                (boundaryQuality != "exact" || String.IsNullOrEmpty(sessionUuid)))
+            {
+                uiLastError = "exact boundaries require exact quality and session_uuid";
+                return GetUiControlStatus(
+                    resetId,
+                    false,
+                    sessionUuid,
+                    afterMessageId,
+                    boundaryMode,
+                    boundaryQuality,
+                    boundaryReason);
+            }
+
+            StopParsing();
+            ActivateParityTabs();
+
+            if (!StartParsing(String.Empty, HorizonMemoryOffset, false))
+            {
+                return GetUiControlStatus(
+                    resetId,
+                    false,
+                    sessionUuid,
+                    afterMessageId,
+                    boundaryMode,
+                    boundaryQuality,
+                    boundaryReason);
+            }
+
+            uiGeneration++;
+            uiLastResetUtc = DateTime.UtcNow;
+            uiLastError = String.Empty;
+            uiBoundaryMode = boundaryMode;
+            uiBoundaryQuality = boundaryQuality;
+            uiBoundaryReason = boundaryReason;
+            return GetUiControlStatus(
+                resetId,
+                true,
+                sessionUuid,
+                afterMessageId,
+                boundaryMode,
+                boundaryQuality,
+                boundaryReason);
+        }
+
+        private string GetUiControlStatus()
+        {
+            return GetUiControlStatus(
+                String.Empty,
+                Monitor.Instance.IsRunning,
+                String.Empty,
+                "0",
+                uiBoundaryMode,
+                uiBoundaryQuality,
+                uiBoundaryReason);
+        }
+
+        private string GetUiControlStatus(
+            string resetId,
+            bool ok,
+            string sessionUuid,
+            string boundaryMessageId,
+            string boundaryMode,
+            string boundaryQuality,
+            string boundaryReason)
+        {
+            return String.Format(
+                "{{\"ok\":{0},\"service\":\"kparser\",\"pid\":{1},\"running\":{2},\"generation\":{3},\"reset_id\":\"{4}\",\"session_uuid\":\"{5}\",\"boundary_message_id\":\"{6}\",\"boundary_mode\":\"{7}\",\"boundary_quality\":\"{8}\",\"boundary_reason\":\"{9}\",\"last_reset_utc\":\"{10}\",\"error\":\"{11}\"}}",
+                ok ? "true" : "false",
+                Process.GetCurrentProcess().Id,
+                Monitor.Instance.IsRunning ? "true" : "false",
+                uiGeneration,
+                JsonEscape(resetId),
+                JsonEscape(sessionUuid),
+                JsonEscape(boundaryMessageId),
+                JsonEscape(boundaryMode),
+                JsonEscape(boundaryQuality),
+                JsonEscape(boundaryReason),
+                uiLastResetUtc == DateTime.MinValue ? String.Empty : uiLastResetUtc.ToString("O"),
+                JsonEscape(uiLastError));
+        }
+
+        private static string GetUiControlDescriptorPath()
+        {
+            string root = Environment.GetEnvironmentVariable("KDEV_ROOT");
+            DirectoryInfo directory = new DirectoryInfo(
+                String.IsNullOrEmpty(root)
+                    ? AppDomain.CurrentDomain.BaseDirectory
+                    : root);
+
+            while (directory != null)
+            {
+                if (Directory.Exists(Path.Combine(directory.FullName, "ffxi-captures")))
+                {
+                    string captureDirectory = Path.Combine(
+                        Path.Combine(directory.FullName, "ffxi-captures"),
+                        "ndjson");
+                    Directory.CreateDirectory(captureDirectory);
+                    return Path.Combine(captureDirectory, "ui-control-kparser.json");
+                }
+
+                directory = directory.Parent;
+            }
+
+            string fallback = Path.Combine(
+                Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "kdev"),
+                "ui-control-kparser.json");
+            Directory.CreateDirectory(Path.GetDirectoryName(fallback));
+            return fallback;
+        }
+
+        private static string JsonEscape(string value)
+        {
+            return (value ?? String.Empty)
+                .Replace("\\", "\\\\")
+                .Replace("\"", "\\\"")
+                .Replace("\r", "\\r")
+                .Replace("\n", "\\n");
+        }
+
         private void ParserWindow_FormClosing(object sender, FormClosingEventArgs e)
         {
+            if (uiControlServer != null)
+            {
+                uiControlServer.Dispose();
+                uiControlServer = null;
+            }
+
             SaveWindowState();
             SavePluginList();
             SaveRecentFilesList();
@@ -1895,6 +2105,22 @@ namespace WaywardGamers.KParser
                 pluginTabs.SelectedIndex = 0;
         }
 
+        private void ActivateParityTabs()
+        {
+            for (int index = 0; index < pluginList.Count; index++)
+            {
+                IPlugin plugin = pluginList[index];
+                if (plugin.IsDebug)
+                    continue;
+
+                if (!tabMenuList[index].Checked)
+                    tabMenuList[index].Checked = true;
+            }
+
+            if (pluginTabs.TabCount > 0)
+                pluginTabs.SelectedIndex = 0;
+        }
+
         /// <summary>
         /// Configure the tab the will contain the specified plugin control.
         /// </summary>
@@ -2054,16 +2280,28 @@ namespace WaywardGamers.KParser
         #endregion
 
         #region Parsing Control Methods
-        private void StartParsing(string outputFileName)
+        private bool StartParsing(
+            string outputFileName,
+            uint? memoryOffsetOverride = null,
+            bool showErrors = true)
         {
             appSettings.Reload();
+            if (memoryOffsetOverride.HasValue)
+            {
+                appSettings.ParseMode = DataSource.Ram;
+                appSettings.MemoryOffset = memoryOffsetOverride.Value;
+            }
 
             if (!VerifyAdminAccess())
             {
-                MessageBox.Show(Resources.PublicResources.AdminPrivilegeNeeded,
-                    Resources.PublicResources.Error, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                uiLastError = Resources.PublicResources.AdminPrivilegeNeeded;
+                if (showErrors)
+                {
+                    MessageBox.Show(Resources.PublicResources.AdminPrivilegeNeeded,
+                        Resources.PublicResources.Error, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
 
-                return;
+                return false;
             }
 
             programStatusLabel.Text = string.Empty;
@@ -2112,14 +2350,20 @@ namespace WaywardGamers.KParser
                 this.Text = string.Format("{0} - {1}", parseFileName, Application.ProductName);
 
                 programStatusLabel.Text = "Parsing...";
+                return true;
             }
             catch (Exception e)
             {
                 StopParsing();
                 programStatusLabel.Text = "Error.  Parsing stopped.";
                 Logger.Instance.Log(e);
-                MessageBox.Show(e.Message, "Error while attempting to initiate parse.",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                uiLastError = e.Message;
+                if (showErrors)
+                {
+                    MessageBox.Show(e.Message, "Error while attempting to initiate parse.",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+                return false;
             }
         }
 

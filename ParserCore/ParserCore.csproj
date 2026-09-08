@@ -126,6 +126,7 @@
     <Compile Include="Monad\Scanner.cs" />
     <Compile Include="Monitors\PacketReader\PacketReader.cs" />
     <Compile Include="Monitors\ProcessAccess\ProcessAccess.cs" />
+    <Compile Include="Monitors\ChatLineCapture.cs" />
     <Compile Include="Parsing\InternalTesting.cs" />
     <Compile Include="Monad\MonadParser.cs" />
     <Compile Include="Monad\Parser.cs" />

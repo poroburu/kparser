@@ -16,6 +16,24 @@ powershell -File C:\Users\porob\git\kdev\kparser\scripts\snapshot.ps1 snapshot `
 
 Human-readable default prints counts, `parity.chat`, combatants, and `parity.interactions`. `--json` prints the full document (schema: [docs/snapshot-schema.md](docs/snapshot-schema.md)). `--parity-chat` prints only the comparable `{speaker,mode,message}` array. `-o` / `--output out.json` writes UTF-8 JSON (the wrapper passes `-o` through; do not use `param()` remaining-args).
 
+Live RAM capture for synchronized parity:
+
+```powershell
+kparser.cli capture C:\path\to\kparser.chatlines.txt --duration-ms 120000 --checkpoint-ms 120000
+```
+
+`capture` subscribes to the active RAM reader's raw `ChatLine` event stream. It does not create a database or run the parser; pass the resulting file to `snapshot` after the matching kparser2 NDJSON recording ends.
+
+Live WinForms parity surface:
+
+```powershell
+KParser.exe --parity-ui
+```
+
+This explicit mode starts a fresh RAM parse at the HorizonXI chat-log root
+`0x0062D8F0` and opens all non-debug plugin tabs. Normal kparser startup and
+saved tab preferences are unchanged.
+
 Chat-only dual dump (Yell pair; `chat_modes.txt` covers Yell + Say + System):
 
 ```powershell

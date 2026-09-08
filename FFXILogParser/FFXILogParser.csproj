@@ -188,6 +188,7 @@
     <Compile Include="ParserWindow.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="UiControlServer.cs" />
     <Compile Include="ParserWindow.Designer.cs">
       <DependentUpon>ParserWindow.cs</DependentUpon>
     </Compile>

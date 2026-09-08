@@ -59,6 +59,8 @@ namespace WaywardGamers.KParser.Monitoring
         Thread readerThread;
 
         int polPID = 0;
+        bool rawCaptureMode;
+        const uint HorizonMemoryOffset = 0x0062D8F0;
         POL pol;
         uint initialMemoryOffset;
         ChatLogLocationInfo chatLogLocation;
@@ -82,6 +84,20 @@ namespace WaywardGamers.KParser.Monitoring
         /// </summary>
         public override void Start()
         {
+            StartInternal(false);
+        }
+
+        /// <summary>
+        /// Start a reader for the headless ChatLine export path.
+        /// </summary>
+        internal void StartRawCapture()
+        {
+            StartInternal(true);
+        }
+
+        private void StartInternal(bool rawCapture)
+        {
+            rawCaptureMode = rawCapture;
             IsRunning = true;
 
             try
@@ -98,7 +114,12 @@ namespace WaywardGamers.KParser.Monitoring
                 appSettings.Reload();
 
                 // Update the memory offset of the thread class before starting.
-                initialMemoryOffset = appSettings.MemoryOffset;
+                // The headless oracle targets the HorizonXI client.  Its
+                // chat-log root is different from the legacy Eden/retail
+                // default stored in the shared settings file.
+                initialMemoryOffset = rawCaptureMode
+                    ? HorizonMemoryOffset
+                    : appSettings.MemoryOffset;
 
                 // If the user requests that they be allowed to specify the particular
                 // POL process, bring up a form to determine that value.  If not found
@@ -148,6 +169,18 @@ namespace WaywardGamers.KParser.Monitoring
         }
 
         /// <summary>
+        /// Stop a headless capture and wait for the monitor thread to finish
+        /// publishing its final status.
+        /// </summary>
+        internal void StopRawCapture()
+        {
+            Stop();
+
+            if ((readerThread != null) && readerThread.IsAlive)
+                readerThread.Join(6000);
+        }
+
+        /// <summary>
         /// Call this function rather than aborting the thread directly.
         /// </summary>
         internal void Abort()
@@ -182,14 +215,23 @@ namespace WaywardGamers.KParser.Monitoring
                 abortMonitorThread.Reset();
                 bool needToLogin = true;
 
-                pol = ProcessAccess.GetFFXIProcess(polPID, abortMonitorThread);
+                pol = rawCaptureMode
+                    ? ProcessAccess.GetFFXIProcessForCapture(polPID, abortMonitorThread)
+                    : ProcessAccess.GetFFXIProcess(polPID, abortMonitorThread);
                 if (pol == null)
                 {
+                    string statusMessage = rawCaptureMode
+                        ? ProcessAccess.LastCaptureFailure
+                        : null;
+
+                    if (String.IsNullOrEmpty(statusMessage))
+                        statusMessage = "Failed to find FFXI";
+
                     OnReaderStatusChanged(new ReaderStatusEventArgs()
                     {
                         Active = true,
                         DataSourceType = this.ParseModeType,
-                        StatusMessage = "Failed to find FFXI"
+                        StatusMessage = statusMessage
                     });
 
                     return;
@@ -219,7 +261,9 @@ namespace WaywardGamers.KParser.Monitoring
                     // If polProcess is ever lost (player disconnects), block on trying to reacquire it.
                     if (pol == null)
                     {
-                        pol = ProcessAccess.GetFFXIProcess(polPID, abortMonitorThread);
+                        pol = rawCaptureMode
+                            ? ProcessAccess.GetFFXIProcessForCapture(polPID, abortMonitorThread)
+                            : ProcessAccess.GetFFXIProcess(polPID, abortMonitorThread);
                         if (pol == null)
                         {
                             // End here if the FindFFXIProcess returns false,

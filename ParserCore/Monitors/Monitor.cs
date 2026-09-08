@@ -189,6 +189,21 @@ namespace WaywardGamers.KParser.Monitoring
         }
 
         /// <summary>
+        /// Start the RAM reader without creating a database or starting the
+        /// parser session. Consumers can subscribe to ReaderDataChanged to
+        /// capture the raw ChatLine stream without changing parser state.
+        /// </summary>
+        public void StartRawCapture()
+        {
+            if (currentReader.IsRunning == true)
+                throw new InvalidOperationException(string.Format(
+                    "{0} is already running", currentReader.GetType().Name));
+
+            currentReader = RamReader.Instance;
+            RamReader.Instance.StartRawCapture();
+        }
+
+        /// <summary>
         /// Continue parsing against an existing database.
         /// </summary>
         public void Continue(DataSource dataSourceType)
@@ -491,6 +506,18 @@ namespace WaywardGamers.KParser.Monitoring
         {
             currentReader.Stop();
             MsgManager.Instance.EndSession();
+        }
+
+        /// <summary>
+        /// Stop a raw RAM capture without ending a parser session or
+        /// touching the database.
+        /// </summary>
+        public void StopRawCapture()
+        {
+            if (currentReader == RamReader.Instance)
+                RamReader.Instance.StopRawCapture();
+            else
+                currentReader.Stop();
         }
         #endregion
 

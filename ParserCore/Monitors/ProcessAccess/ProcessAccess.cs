@@ -10,6 +10,13 @@ namespace WaywardGamers.KParser.Monitoring
 {
     internal static class ProcessAccess
     {
+        private static string lastCaptureFailure;
+
+        internal static string LastCaptureFailure
+        {
+            get { return lastCaptureFailure; }
+        }
+
         /// <summary>
         /// This function searches the computer processes to locate the FFXI process.
         /// If a particular process ID is specified, it will restrict its search to
@@ -24,6 +31,24 @@ namespace WaywardGamers.KParser.Monitoring
         /// <returns>Returns a POL object containing the process information needed,
         /// or null if no process was found and the request was aborted.</returns>
         internal static POL GetFFXIProcess(int polPID, ManualResetEvent _abort)
+        {
+            return GetFFXIProcess(polPID, _abort, false);
+        }
+
+        /// <summary>
+        /// Locate the client used by the headless capture command.  HorizonXI
+        /// hosts the client in horizon-loader.exe rather than edenxi.exe.
+        /// </summary>
+        internal static POL GetFFXIProcessForCapture(int polPID, ManualResetEvent _abort)
+        {
+            lastCaptureFailure = null;
+            return GetFFXIProcess(polPID, _abort, true);
+        }
+
+        private static POL GetFFXIProcess(
+            int polPID,
+            ManualResetEvent _abort,
+            bool includeHorizonLoader)
         {
 #if DEBUG
             
@@ -50,14 +75,33 @@ namespace WaywardGamers.KParser.Monitoring
                     }
                     else
                     {
-                        // If we're not given a specific process, scan all processes for POL.
-                        polProcesses = Process.GetProcessesByName("edenxi");
+                        // If we're not given a specific process, scan all processes
+                        // for POL.  The headless HorizonXI client is hosted by
+                        // horizon-loader.exe.
+                        List<Process> candidates = new List<Process>();
+                        candidates.AddRange(Process.GetProcessesByName("edenxi"));
+                        if (includeHorizonLoader)
+                            candidates.AddRange(Process.GetProcessesByName("horizon-loader"));
+                        polProcesses = candidates.ToArray();
                     }
 
 
                     // If we've found any POL processes, examine them for the proper module.
                     if (polProcesses != null)
                     {
+                        if (includeHorizonLoader &&
+                            polProcesses.Length > 0 &&
+                            Array.FindIndex(
+                                polProcesses,
+                                p => String.Equals(
+                                    p.ProcessName,
+                                    "horizon-loader",
+                                    StringComparison.OrdinalIgnoreCase)) >= 0)
+                        {
+                            lastCaptureFailure =
+                                "Found horizon-loader.exe, but its FFXI module is not accessible; run kparser.cli as Administrator.";
+                        }
+
                         foreach (Process process in polProcesses)
                         {
                             foreach (ProcessModule module in process.Modules)
