@@ -16,15 +16,15 @@ powershell -File C:\Users\porob\git\kdev\kparser\scripts\snapshot.ps1 snapshot `
 
 Human-readable default prints counts, `parity.chat`, combatants, and `parity.interactions`. `--json` prints the full document (schema: [docs/snapshot-schema.md](docs/snapshot-schema.md)). `--parity-chat` prints only the comparable `{speaker,mode,message}` array. `-o` / `--output out.json` writes UTF-8 JSON (the wrapper passes `-o` through; do not use `param()` remaining-args).
 
-Live RAM capture for synchronized parity:
+Live RAM capture for synchronized parity (required on a report-oracle scan — [kparser2/docs/report-oracle.md](../kparser2/docs/report-oracle.md); do not skip as unobserved):
 
 ```powershell
 kparser.cli capture C:\path\to\kparser.chatlines.txt --duration-ms 120000 --checkpoint-ms 120000
 ```
 
-`capture` subscribes to the active RAM reader's raw `ChatLine` event stream. It does not create a database or run the parser; pass the resulting file to `snapshot` after the matching kparser2 NDJSON recording ends.
+`capture` subscribes to the active RAM reader's raw `ChatLine` event stream at `0x0062D8F0`. It does not create a database or run the parser; pass the resulting file to `snapshot` after the matching kparser2 NDJSON recording ends. RAM read often needs Administrator. Failed attach: rebuild x86 net3.5 CLI, elevate, retry. Town idle with a live attach is OK. If kparser2 NDJSON grew combat/chat and this file did not, attach is broken.
 
-Live WinForms parity surface:
+Live WinForms parity surface (acceptable alternate if CLI capture cannot attach; you still need a ChatLine file):
 
 ```powershell
 KParser.exe --parity-ui
@@ -76,7 +76,7 @@ dotnet run --project C:\Users\porob\git\kdev\kparser2\kparser2.Cli\kparser2.Cli.
 powershell -File C:\Users\porob\git\kdev\kparser2\scripts\compare-chat-parity.ps1 kparser-chat.json k2-yell.json
 ```
 
-See [kparser2 AGENTS.md](../kparser2/AGENTS.md) for the dual-oracle loop.
+See [kparser2/docs/report-oracle.md](../kparser2/docs/report-oracle.md) for the dual-capture report-oracle loop.
 
 ## Tests
 
