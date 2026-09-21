@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Security.Principal;
 using System.Text;
 using System.Threading;
 using WaywardGamers.KParser;
@@ -123,6 +124,13 @@ namespace WaywardGamers.KParser.Cli
                 }
             }
 
+            if (!IsRunningAsAdministrator())
+            {
+                Console.Error.WriteLine(
+                    "kparser.cli capture must run as Administrator to read the HorizonXI chat log.");
+                return 2;
+            }
+
             ManualResetEvent stop = new ManualResetEvent(false);
             ConsoleCancelEventHandler cancel = delegate(object sender, ConsoleCancelEventArgs e)
             {
@@ -183,6 +191,13 @@ namespace WaywardGamers.KParser.Cli
             }
         }
 
+        static bool IsRunningAsAdministrator()
+        {
+            WindowsIdentity identity = WindowsIdentity.GetCurrent();
+            WindowsPrincipal principal = new WindowsPrincipal(identity);
+            return principal.IsInRole(WindowsBuiltInRole.Administrator);
+        }
+
         static bool TryReadInt(string[] args, ref int index, out int value)
         {
             value = 0;
@@ -198,6 +213,7 @@ namespace WaywardGamers.KParser.Cli
             Console.WriteLine("Usage:");
             Console.WriteLine("  kparser.cli snapshot <chatlines.txt> [--json] [--parity-chat] [-o|--output out.json]");
             Console.WriteLine("  kparser.cli capture <chatlines.txt> [--duration-ms ms] [--checkpoint-ms ms]");
+            Console.WriteLine("    capture must run as Administrator.");
         }
     }
 }

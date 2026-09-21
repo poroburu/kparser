@@ -22,7 +22,7 @@ Live RAM capture for synchronized parity (required on a report-oracle scan — [
 kparser.cli capture C:\path\to\kparser.chatlines.txt --duration-ms 120000 --checkpoint-ms 120000
 ```
 
-`capture` subscribes to the active RAM reader's raw `ChatLine` event stream at `0x0062D8F0`. It does not create a database or run the parser; pass the resulting file to `snapshot` after the matching kparser2 NDJSON recording ends. RAM read often needs Administrator. Failed attach: rebuild x86 net3.5 CLI, elevate, retry. Town idle with a live attach is OK. If kparser2 NDJSON grew combat/chat and this file did not, attach is broken.
+`capture` subscribes to the active RAM reader's raw `ChatLine` event stream at `0x0062D8F0`. It does not create a database or run the parser; pass the resulting file to `snapshot` after the matching kparser2 NDJSON recording ends. `capture` must run as Administrator (`Start-Process -Verb RunAs`). An unelevated process exits 2 before it creates ChatLines. `snapshot` reads a file and does not need elevation. Town idle with a live attach is OK. If kparser2 NDJSON grew combat/chat and this file did not, attach is broken.
 
 Live WinForms parity surface (acceptable alternate if CLI capture cannot attach; you still need a ChatLine file):
 
